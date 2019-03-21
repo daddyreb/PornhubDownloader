@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+import re
+from request import get_request
+import sys
+import urllib3
+import redis
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+r = redis.Redis(host="localhost", port=6379, db=0)
+
+def get_help():
+	print("""Usage: porndown [options...] <url>
+-l --list	Download a playlist
+-v --video	Download a video
+		""")
+def get_page():
+	for i in range(r.llen("video_pages")):
+		i += 1
+		print(i)
+
+def down_list(url):
+	print("Download PlayList Page Wait...")
+	list_page = get_request(url)
+	list_page = re.findall('playlistSectionWrapper(.*?)cmtPlaylist', list_page, re.S)[0]
+	all_list = re.findall('(\/view_video\.php\?viewkey=.*?)"', list_page)
+	video_list = []
+	for i in all_list:
+		if i not in video_list:
+			video_list.append("https://www.pornhub.com" + i)
+	print("PlayList Download Done.\nThere are %d Video Download" % len(video_list))
+	for video_page in video_list:
+		r.rpush("video_pages", video_page)
+	get_page()
+
+
+
+def down_video():
+	pass
+
+
+try:
+	url_type = sys.argv[1]
+	url = sys.argv[2]
+	if len(sys.argv) != 3:
+		get_help()
+		exit()
+	if sys.argv[1] == "--help":
+		get_help()
+		exit()
+	if sys.argv[1] == "-l" or sys.argv[1] == "--list":
+		down_list(url)
+	if sys.argv[1] == "-v" or sys.argv[1] == "--video":
+		down_video(url)
+except Exception as e:
+	raise e
+	get_help()
+
+
